@@ -1,0 +1,32 @@
+<div class="min-h-screen bg-slate-100">
+  <header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      <a routerLink="/pets" class="flex items-center gap-2">
+        <span class="text-xl font-bold text-emerald-700">PetManager</span>
+        <span class="hidden text-sm text-slate-500 sm:inline">CRUD de Pets</span>
+      </a>
+
+      <nav class="flex items-center gap-4 text-sm font-medium">
+        <a
+          routerLink="/pets"
+          routerLinkActive="text-emerald-700"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="text-slate-600 transition hover:text-emerald-700"
+        >
+          Listagem
+        </a>
+        <a
+          routerLink="/pets/novo"
+          routerLinkActive="text-emerald-700"
+          class="text-slate-600 transition hover:text-emerald-700"
+        >
+          Novo pet
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <router-outlet />
+  </main>
+</div>
