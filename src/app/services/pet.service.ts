@@ -7,7 +7,7 @@ import { CreatePetDto, Pet, UpdatePetDto } from '../models/pet.model';
 @Injectable({ providedIn: 'root' })
 export class PetService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:3000/pets';
+  private readonly apiUrl = '/api/pets';
 
   async getAll(): Promise<Pet[]> {
     return firstValueFrom(this.http.get<Pet[]>(this.apiUrl));
