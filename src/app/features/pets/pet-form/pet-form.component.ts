@@ -1,9 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
 
 import { EspeciePet, SexoPet } from '../../../models/pet.model';
 import { PetService } from '../../../services/pet.service';
@@ -18,7 +16,6 @@ export class PetFormComponent implements OnInit {
   private readonly petService = inject(PetService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly especies = Object.values(EspeciePet);
   protected readonly sexos = Object.values(SexoPet);
@@ -44,7 +41,7 @@ export class PetFormComponent implements OnInit {
     if (id) {
       this.isEditMode.set(true);
       this.petId = id;
-      this.loadPet(id);
+      void this.loadPet(id);
     }
   }
 
@@ -62,7 +59,7 @@ export class PetFormComponent implements OnInit {
 
   protected isInvalid(controlName: keyof typeof this.form.controls): boolean {
     const control = this.form.controls[controlName];
-    return (control.invalid && (control.touched || this.submitted()));
+    return control.invalid && (control.touched || this.submitted());
   }
 
   protected getErrorMessage(controlName: keyof typeof this.form.controls): string {
@@ -79,7 +76,7 @@ export class PetFormComponent implements OnInit {
     return 'Valor inválido.';
   }
 
-  protected onSubmit(): void {
+  protected async onSubmit(): Promise<void> {
     this.submitted.set(true);
     this.errorMessage.set(null);
 
@@ -91,62 +88,60 @@ export class PetFormComponent implements OnInit {
     this.loading.set(true);
     const formValue = this.form.getRawValue();
 
-    const request$ = this.isEditMode() && this.petId
-      ? this.petService.update({ id: this.petId, ...formValue })
-      : this.petService.create(formValue);
+    try {
+      if (this.isEditMode() && this.petId) {
+        await this.petService.update({ id: this.petId, ...formValue });
+      } else {
+        await this.petService.create(formValue);
+      }
 
-    request$
-      .pipe(
-        finalize(() => this.loading.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => this.router.navigate(['/pets']),
-        error: (error: HttpErrorResponse) => {
-          console.error('Erro ao salvar pet:', error);
-          const action = this.isEditMode() ? 'atualizar' : 'cadastrar';
-          this.errorMessage.set(this.getConnectionErrorMessage(error, action));
-        },
-      });
+      await this.router.navigate(['/pets']);
+    } catch (error) {
+      console.error('Erro ao salvar pet:', error);
+      const action = this.isEditMode() ? 'atualizar' : 'cadastrar';
+      this.errorMessage.set(this.getConnectionErrorMessage(error, action));
+    } finally {
+      this.loading.set(false);
+    }
   }
 
-  private loadPet(id: string): void {
+  private async loadPet(id: string): Promise<void> {
     this.loadingPet.set(true);
     this.errorMessage.set(null);
 
-    this.petService
-      .getById(id)
-      .pipe(
-        finalize(() => this.loadingPet.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (pet) => {
-          this.form.patchValue({
-            nome: pet.nome,
-            data_nascimento: pet.data_nascimento,
-            especie: pet.especie,
-            raca: pet.raca,
-            sexo: pet.sexo,
-          });
-        },
-        error: (error: HttpErrorResponse) => {
-          console.error('Erro ao carregar pet:', error);
-          if (error.status === 0) {
-            this.errorMessage.set(
-              'Não foi possível conectar ao servidor. Verifique se o backend está rodando em http://localhost:3000.',
-            );
-            return;
-          }
+    try {
+      const pet = await this.petService.getById(id);
 
-          this.errorMessage.set('Pet não encontrado.');
-          this.router.navigate(['/pets']);
-        },
+      this.form.patchValue({
+        nome: pet.nome,
+        data_nascimento: pet.data_nascimento,
+        especie: pet.especie,
+        raca: pet.raca,
+        sexo: pet.sexo,
       });
+    } catch (error) {
+      console.error('Erro ao carregar pet:', error);
+
+      const httpError = error as HttpErrorResponse;
+
+      if (httpError.status === 0) {
+        this.errorMessage.set(
+          'Não foi possível conectar ao servidor. Verifique se o backend está rodando em http://localhost:3000.',
+        );
+        return;
+      }
+
+      this.errorMessage.set('Pet não encontrado.');
+      await this.router.navigate(['/pets']);
+    } finally {
+      this.loadingPet.set(false);
+    }
   }
 
-  private getConnectionErrorMessage(error: HttpErrorResponse, action: string): string {
-    if (error.status === 0) {
+  private getConnectionErrorMessage(error: unknown, action: string): string {
+    const httpError = error as HttpErrorResponse;
+
+    if (httpError.status === 0) {
       return 'Não foi possível conectar ao servidor. Verifique se o backend está rodando em http://localhost:3000.';
     }
 

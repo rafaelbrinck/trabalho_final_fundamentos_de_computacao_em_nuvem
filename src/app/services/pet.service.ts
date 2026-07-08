@@ -1,32 +1,32 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 import { CreatePetDto, Pet, UpdatePetDto } from '../models/pet.model';
 
 @Injectable({ providedIn: 'root' })
 export class PetService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/api/pets';
+  private readonly apiUrl = 'http://localhost:3000/pets';
 
-  getAll(): Observable<Pet[]> {
-    return this.http.get<Pet[]>(this.apiUrl);
+  async getAll(): Promise<Pet[]> {
+    return firstValueFrom(this.http.get<Pet[]>(this.apiUrl));
   }
 
-  getById(id: string): Observable<Pet> {
-    return this.http.get<Pet>(`${this.apiUrl}/${id}`);
+  async getById(id: string): Promise<Pet> {
+    return firstValueFrom(this.http.get<Pet>(`${this.apiUrl}/${id}`));
   }
 
-  create(dto: CreatePetDto): Observable<Pet> {
-    return this.http.post<Pet>(this.apiUrl, dto);
+  async create(dto: CreatePetDto): Promise<Pet> {
+    return firstValueFrom(this.http.post<Pet>(this.apiUrl, dto));
   }
 
-  update(dto: UpdatePetDto): Observable<Pet> {
+  async update(dto: UpdatePetDto): Promise<Pet> {
     const { id, ...body } = dto;
-    return this.http.put<Pet>(`${this.apiUrl}/${id}`, body);
+    return firstValueFrom(this.http.put<Pet>(`${this.apiUrl}/${id}`, body));
   }
 
-  delete(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  async delete(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete<void>(`${this.apiUrl}/${id}`));
   }
 }
