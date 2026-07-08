@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -101,12 +102,11 @@ export class PetFormComponent implements OnInit {
       )
       .subscribe({
         next: () => this.router.navigate(['/pets']),
-        error: () =>
-          this.errorMessage.set(
-            this.isEditMode()
-              ? 'Não foi possível atualizar o pet. Tente novamente.'
-              : 'Não foi possível cadastrar o pet. Tente novamente.',
-          ),
+        error: (error: HttpErrorResponse) => {
+          console.error('Erro ao salvar pet:', error);
+          const action = this.isEditMode() ? 'atualizar' : 'cadastrar';
+          this.errorMessage.set(this.getConnectionErrorMessage(error, action));
+        },
       });
   }
 
@@ -130,10 +130,26 @@ export class PetFormComponent implements OnInit {
             sexo: pet.sexo,
           });
         },
-        error: () => {
+        error: (error: HttpErrorResponse) => {
+          console.error('Erro ao carregar pet:', error);
+          if (error.status === 0) {
+            this.errorMessage.set(
+              'Não foi possível conectar ao servidor. Verifique se o backend está rodando em http://localhost:3000.',
+            );
+            return;
+          }
+
           this.errorMessage.set('Pet não encontrado.');
           this.router.navigate(['/pets']);
         },
       });
+  }
+
+  private getConnectionErrorMessage(error: HttpErrorResponse, action: string): string {
+    if (error.status === 0) {
+      return 'Não foi possível conectar ao servidor. Verifique se o backend está rodando em http://localhost:3000.';
+    }
+
+    return `Não foi possível ${action} o pet. Tente novamente.`;
   }
 }

@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -37,7 +38,10 @@ export class PetListComponent implements OnInit {
       )
       .subscribe({
         next: (pets) => this.pets.set(pets),
-        error: () => this.errorMessage.set('Não foi possível carregar os pets. Tente novamente.'),
+        error: (error: HttpErrorResponse) => {
+          console.error('Erro ao carregar pets:', error);
+          this.errorMessage.set(this.getConnectionErrorMessage(error, 'carregar os pets'));
+        },
       });
   }
 
@@ -59,11 +63,24 @@ export class PetListComponent implements OnInit {
       )
       .subscribe({
         next: () => this.pets.update((current) => current.filter((item) => item.id !== pet.id)),
-        error: () => this.errorMessage.set(`Não foi possível excluir o pet "${pet.nome}".`),
+        error: (error: HttpErrorResponse) => {
+          console.error(`Erro ao excluir pet "${pet.nome}":`, error);
+          this.errorMessage.set(
+            this.getConnectionErrorMessage(error, `excluir o pet "${pet.nome}"`),
+          );
+        },
       });
   }
 
   protected isDeleting(petId: string): boolean {
     return this.deletingId() === petId;
+  }
+
+  private getConnectionErrorMessage(error: HttpErrorResponse, action: string): string {
+    if (error.status === 0) {
+      return 'Não foi possível conectar ao servidor. Verifique se o backend está rodando em http://localhost:3000.';
+    }
+
+    return `Não foi possível ${action}. Tente novamente.`;
   }
 }
